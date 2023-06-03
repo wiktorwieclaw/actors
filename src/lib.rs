@@ -1,7 +1,7 @@
 #![no_std]
 
-use embassy_sync::{blocking_mutex::raw::NoopRawMutex, channel::Sender};
 use core::clone::Clone;
+use embassy_sync::{blocking_mutex::raw::NoopRawMutex, channel::Sender};
 
 pub trait Actor {
     type Msg: 'static;
