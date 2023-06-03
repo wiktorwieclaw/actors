@@ -43,6 +43,7 @@ macro_rules! spawn {
             blocking_mutex::raw::NoopRawMutex,
             channel::{Channel, Receiver},
         };
+        use static_cell::StaticCell;
 
         type Message = <$actor_type as crate::framework::Actor>::Msg;
 

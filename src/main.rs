@@ -8,7 +8,6 @@ use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_futures::join::join3;
 use panic_probe as _;
-use static_cell::StaticCell;
 
 pub mod example {
     use crate::framework::{Actor, Addr, Ctx};
@@ -51,3 +50,5 @@ async fn main(spawner: Spawner) {
     )
     .await;
 }
+
+mod counterexample {}
