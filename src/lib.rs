@@ -1,4 +1,7 @@
+#![no_std]
+
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, channel::Sender};
+use core::clone::Clone;
 
 pub trait Actor {
     type Msg: 'static;
@@ -38,27 +41,27 @@ impl<A: Actor, const SIZE: usize> Addr<A, SIZE> {
 #[macro_export]
 macro_rules! spawn {
     ($spawner:expr, $actor_type:ty, $size:expr, $actor:expr) => {{
-        use crate::framework::Actor;
+        use ::actors::{Actor, Addr, Ctx};
         use embassy_sync::{
             blocking_mutex::raw::NoopRawMutex,
             channel::{Channel, Receiver},
         };
         use static_cell::StaticCell;
 
-        type Message = <$actor_type as crate::framework::Actor>::Msg;
+        type Message = <$actor_type as Actor>::Msg;
 
         static CHANNEL: StaticCell<Channel<NoopRawMutex, Message, $size>> = StaticCell::new();
         let channel = CHANNEL.init(Channel::new());
         let (sender, receiver) = (channel.sender(), channel.receiver());
 
-        let addr = crate::framework::Addr { sender };
-        let ctx = crate::framework::Ctx { addr: addr.clone() };
+        let addr = Addr { sender };
+        let ctx = Ctx { addr: addr.clone() };
 
         #[embassy_executor::task]
         async fn task(
             mut actor: $actor_type,
             receiver: Receiver<'static, NoopRawMutex, Message, $size>,
-            mut ctx: crate::framework::Ctx<$actor_type, $size>,
+            mut ctx: Ctx<$actor_type, $size>,
         ) {
             loop {
                 let msg = receiver.recv().await;
@@ -69,5 +72,3 @@ macro_rules! spawn {
         $spawner.spawn(task($actor, receiver, ctx)).map(|_| addr)
     }};
 }
-
-pub use spawn;
