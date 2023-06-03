@@ -48,5 +48,3 @@ async fn main(spawner: Spawner) {
     )
     .await;
 }
-
-mod counterexample {}
