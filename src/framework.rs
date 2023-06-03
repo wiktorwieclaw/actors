@@ -48,7 +48,7 @@ macro_rules! spawn {
         type Message = <$actor_type as crate::framework::Actor>::Msg;
 
         static CHANNEL: StaticCell<Channel<NoopRawMutex, Message, $size>> = StaticCell::new();
-        let channel = CHANNEL.init(embassy_sync::channel::Channel::new());
+        let channel = CHANNEL.init(Channel::new());
         let (sender, receiver) = (channel.sender(), channel.receiver());
 
         let addr = crate::framework::Addr { sender };
