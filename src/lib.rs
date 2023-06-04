@@ -1,30 +1,29 @@
 #![no_std]
 
 use core::clone::Clone;
-use embassy_sync::{blocking_mutex::raw::NoopRawMutex, channel::Sender};
+use embassy_sync::channel::DynamicSender;
 
-pub trait Actor {
+pub trait Actor: Sized {
     type Msg: 'static;
-    type Ctx;
 
-    fn handle(&mut self, msg: Self::Msg, ctx: &mut Self::Ctx);
+    fn handle(&mut self, msg: Self::Msg, ctx: &mut Ctx<Self>);
 }
 
-pub struct Ctx<A: Actor, const SIZE: usize> {
-    pub addr: Addr<A, SIZE>, // TODO: make private
+pub struct Ctx<A: Actor> {
+    pub addr: Addr<A>, // TODO: make private
 }
 
-impl<A: Actor, const SIZE: usize> Ctx<A, SIZE> {
-    pub fn address(&self) -> Addr<A, SIZE> {
+impl<A: Actor> Ctx<A> {
+    pub fn address(&self) -> Addr<A> {
         self.addr.clone()
     }
 }
 
-pub struct Addr<A: Actor, const SIZE: usize> {
-    pub sender: Sender<'static, NoopRawMutex, A::Msg, SIZE>, // TODO: make private
+pub struct Addr<A: Actor> {
+    pub sender: DynamicSender<'static, A::Msg>, // TODO: make private
 }
 
-impl<A: Actor, const SIZE: usize> Clone for Addr<A, SIZE> {
+impl<A: Actor> Clone for Addr<A> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
@@ -32,7 +31,7 @@ impl<A: Actor, const SIZE: usize> Clone for Addr<A, SIZE> {
     }
 }
 
-impl<A: Actor, const SIZE: usize> Addr<A, SIZE> {
+impl<A: Actor> Addr<A> {
     pub async fn send(&self, msg: A::Msg) {
         self.sender.send(msg).await
     }
@@ -54,14 +53,16 @@ macro_rules! spawn {
         let channel = CHANNEL.init(Channel::new());
         let (sender, receiver) = (channel.sender(), channel.receiver());
 
-        let addr = Addr { sender };
+        let addr = Addr {
+            sender: sender.into(),
+        };
         let ctx = Ctx { addr: addr.clone() };
 
         #[embassy_executor::task]
         async fn task(
             mut actor: $actor_type,
             receiver: Receiver<'static, NoopRawMutex, Message, $size>,
-            mut ctx: Ctx<$actor_type, $size>,
+            mut ctx: Ctx<$actor_type>,
         ) {
             loop {
                 let msg = receiver.recv().await;

@@ -2,44 +2,36 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
+use actors::{Actor, Addr, Ctx};
 use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_futures::join::join3;
 use panic_probe as _;
 
-pub mod example {
-    use actors::{Actor, Addr, Ctx};
+pub struct Counter {
+    pub count: i32,
+}
 
-    pub struct Counter {
-        pub count: i32,
-    }
+pub enum Message {
+    Inc,
+    Dec,
+}
 
-    pub enum Message {
-        Inc,
-        Dec,
-    }
+impl Actor for Counter {
+    type Msg = Message;
 
-    pub const QUEUE_SIZE: usize = 128;
-    pub type Address = Addr<Counter, QUEUE_SIZE>;
-
-    impl Actor for Counter {
-        type Msg = Message;
-        type Ctx = Ctx<Self, QUEUE_SIZE>;
-
-        fn handle(&mut self, msg: Self::Msg, _ctx: &mut Self::Ctx) {
-            match msg {
-                Message::Inc => self.count += 1,
-                Message::Dec => self.count -= 1,
-            }
+    fn handle(&mut self, msg: Message, _ctx: &mut Ctx<Self>) {
+        match msg {
+            Message::Inc => self.count += 1,
+            Message::Dec => self.count -= 1,
         }
     }
 }
 
-use example::{Address, Counter, Message};
-
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let address: Address = actors::spawn!(spawner, Counter, 128, Counter { count: 0 }).unwrap();
+    let address: Addr<Counter> =
+        actors::spawn!(spawner, Counter, 128, Counter { count: 0 }).unwrap();
 
     join3(
         address.send(Message::Inc),
